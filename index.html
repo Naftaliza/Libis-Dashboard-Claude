@@ -1,0 +1,1451 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Libi's Sweet — Intelligence Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ─── TOKENS ─────────────────────────────────────────── */
+:root {
+  --cream:        #F8F3EC;
+  --cream-2:      #EDE5D6;
+  --cream-3:      #E2D5C0;
+  --white:        #FFFFFF;
+  --card:         #FFFFFF;
+
+  --rose:         #C4687A;
+  --rose-lt:      #F3C3CA;
+  --rose-dk:      #9A4F5F;
+  --caramel:      #C48A55;
+  --caramel-lt:   #F0CAAA;
+  --chocolate:    #5C2E1A;
+  --espresso:     #2D1810;
+  --coffee:       #6B4030;
+  --latte:        #A87060;
+  --biscuit:      #DDD0BF;
+  --sage:         #7A9E6E;
+  --sage-lt:      #C2DBBB;
+  --lavender:     #9B8EC4;
+  --gold:         #C4A355;
+  --gold-lt:      #F0DFA5;
+
+  --success:      #4A8B5C;
+  --success-bg:   #E8F5ED;
+  --warning:      #C4875A;
+  --warning-bg:   #FBF0E6;
+  --info:         #5A87C4;
+  --info-bg:      #E6EEF8;
+  --danger:       #C45A5A;
+  --danger-bg:    #F8E6E6;
+
+  --txt:          #2D1810;
+  --txt-2:        #6B4030;
+  --txt-3:        #A87060;
+  --border:       #E0D0C0;
+  --border-lt:    #EDE4D6;
+
+  --sh-sm: 0 1px 3px rgba(45,24,16,.08),0 1px 2px rgba(45,24,16,.04);
+  --sh-md: 0 4px 14px rgba(45,24,16,.10),0 2px 4px rgba(45,24,16,.06);
+  --sh-lg: 0 8px 28px rgba(45,24,16,.12),0 4px 8px rgba(45,24,16,.05);
+  --sh-xl: 0 20px 56px rgba(45,24,16,.14);
+
+  --ff-display: 'Playfair Display', Georgia, serif;
+  --ff-body:    'DM Sans', -apple-system, sans-serif;
+
+  --r-sm:   6px;
+  --r-md:  12px;
+  --r-lg:  16px;
+  --r-xl:  24px;
+  --r-full: 9999px;
+}
+
+[data-theme="dark"] {
+  --cream:      #1A1210;
+  --cream-2:    #231815;
+  --cream-3:    #2D1E1A;
+  --white:      #1A1210;
+  --card:       #261A16;
+  --txt:        #F5EDE5;
+  --txt-2:      #C4A090;
+  --txt-3:      #8B6558;
+  --border:     #3D2820;
+  --border-lt:  #321E18;
+  --success-bg: #18281E;
+  --warning-bg: #281E10;
+  --info-bg:    #141E2A;
+  --danger-bg:  #281414;
+  --sh-sm: 0 1px 3px rgba(0,0,0,.30);
+  --sh-md: 0 4px 14px rgba(0,0,0,.38);
+  --sh-lg: 0 8px 28px rgba(0,0,0,.46);
+}
+
+/* ─── RESET ──────────────────────────────────────────── */
+*,*::before,*::after { box-sizing: border-box; margin:0; padding:0; }
+html { font-size:16px; scroll-behavior:smooth; }
+body {
+  font-family: var(--ff-body);
+  background: var(--cream);
+  color: var(--txt);
+  line-height: 1.6;
+  min-height: 100vh;
+  transition: background .35s, color .35s;
+  overflow-x: hidden;
+}
+
+/* Ambient blobs */
+body::before {
+  content:'';
+  position:fixed; top:-20%; right:-10%;
+  width:55vw; height:55vw;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(196,104,122,.05) 0%,transparent 68%);
+  pointer-events:none; z-index:0;
+}
+body::after {
+  content:'';
+  position:fixed; bottom:-25%; left:-12%;
+  width:50vw; height:50vw;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(196,138,85,.05) 0%,transparent 68%);
+  pointer-events:none; z-index:0;
+}
+
+/* ─── LOADING ────────────────────────────────────────── */
+#loading-overlay {
+  position:fixed; inset:0;
+  background:var(--cream);
+  z-index:9999;
+  display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  gap:20px;
+  transition:opacity .4s;
+}
+#loading-overlay.hide { opacity:0; pointer-events:none; }
+.load-logo {
+  font-family:var(--ff-display);
+  font-size:2.2rem; font-weight:700;
+  color:var(--rose);
+  letter-spacing:-.5px;
+}
+.load-logo span { color:var(--caramel); }
+.load-spinner {
+  width:44px; height:44px;
+  border:3px solid var(--border);
+  border-top-color:var(--rose);
+  border-radius:50%;
+  animation:spin .75s linear infinite;
+}
+.load-sub { font-size:.85rem; color:var(--txt-3); }
+
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ─── ERROR BANNER ───────────────────────────────────── */
+#error-banner {
+  display:none;
+  position:fixed; top:16px; left:50%; transform:translateX(-50%);
+  background:var(--danger-bg); color:var(--danger);
+  border:1px solid var(--danger);
+  border-radius:var(--r-md);
+  padding:8px 20px;
+  z-index:9998; font-size:.85rem;
+  box-shadow:var(--sh-md);
+}
+
+/* ─── APP SHELL ──────────────────────────────────────── */
+.app { max-width:1640px; margin:0 auto; padding:0 24px; position:relative; z-index:1; }
+
+/* ─── HEADER ─────────────────────────────────────────── */
+.app-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:20px 0 16px;
+  border-bottom:1px solid var(--border-lt);
+  gap:16px; flex-wrap:wrap;
+}
+.h-left { display:flex; align-items:baseline; gap:12px; }
+.logo {
+  font-family:var(--ff-display);
+  font-size:1.8rem; font-weight:700;
+  color:var(--rose); letter-spacing:-.5px;
+  display:flex; align-items:center; gap:8px;
+}
+.logo-emoji { font-size:1.5rem; }
+.tagline { font-size:.8rem; color:var(--txt-3); display:none; }
+@media(min-width:700px){ .tagline { display:block; } }
+
+.h-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.refresh-info { font-size:.72rem; color:var(--txt-3); white-space:nowrap; }
+
+.icon-btn {
+  width:36px; height:36px;
+  border-radius:var(--r-md);
+  border:1.5px solid var(--border);
+  background:var(--card);
+  cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-size:1rem; color:var(--txt-2);
+  transition:all .2s;
+}
+.icon-btn:hover { background:var(--rose); border-color:var(--rose); color:#fff; transform:translateY(-1px); }
+
+.btn-outline {
+  padding:7px 16px;
+  border-radius:var(--r-full);
+  border:1.5px solid var(--border);
+  background:var(--card);
+  cursor:pointer;
+  font-family:var(--ff-body); font-size:.8rem; font-weight:500;
+  color:var(--txt-2);
+  transition:all .2s; white-space:nowrap;
+}
+.btn-outline:hover { background:var(--rose); border-color:var(--rose); color:#fff; transform:translateY(-1px); }
+
+.live-dot {
+  display:inline-flex; align-items:center; gap:6px;
+  font-size:.72rem; color:var(--success);
+  font-weight:600;
+}
+.live-dot::before {
+  content:'';
+  width:7px; height:7px; border-radius:50%;
+  background:var(--success);
+  animation:pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50% { opacity:.6; transform:scale(.85); }
+}
+
+/* ─── FILTER BAR ─────────────────────────────────────── */
+.filter-bar {
+  background:var(--card);
+  border:1px solid var(--border-lt);
+  border-radius:var(--r-lg);
+  padding:16px 20px;
+  margin:16px 0;
+  box-shadow:var(--sh-sm);
+  display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end;
+}
+.quick-btns { display:flex; gap:6px; flex-wrap:wrap; }
+.q-btn {
+  padding:6px 14px;
+  border-radius:var(--r-full);
+  border:1.5px solid var(--border);
+  background:transparent;
+  cursor:pointer;
+  font-family:var(--ff-body); font-size:.78rem; font-weight:500;
+  color:var(--txt-3);
+  transition:all .2s; white-space:nowrap;
+}
+.q-btn:hover,.q-btn.active { background:var(--rose); border-color:var(--rose); color:#fff; }
+.filter-divider { width:1px; background:var(--border); align-self:stretch; }
+.filter-controls { display:flex; gap:12px; flex-wrap:wrap; flex:1; }
+.fg { display:flex; flex-direction:column; gap:3px; min-width:110px; }
+.fg label { font-size:.68rem; font-weight:600; color:var(--txt-3); text-transform:uppercase; letter-spacing:.5px; }
+.fg input,.fg select {
+  padding:6px 10px;
+  border-radius:var(--r-sm);
+  border:1.5px solid var(--border);
+  background:var(--cream);
+  font-family:var(--ff-body); font-size:.83rem;
+  color:var(--txt);
+  outline:none; transition:border-color .2s;
+}
+.fg input:focus,.fg select:focus { border-color:var(--rose); }
+
+/* ─── KPI SECTION ────────────────────────────────────── */
+.kpi-grid {
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:12px;
+  margin-bottom:16px;
+}
+@media(min-width:600px)  { .kpi-grid { grid-template-columns:repeat(3,1fr); } }
+@media(min-width:1100px) { .kpi-grid { grid-template-columns:repeat(6,1fr); } }
+
+.kpi-card {
+  background:var(--card);
+  border-radius:var(--r-lg);
+  padding:20px;
+  box-shadow:var(--sh-md);
+  border:1px solid var(--border-lt);
+  position:relative; overflow:hidden;
+  transition:transform .25s, box-shadow .25s;
+  animation:fadeUp .5s ease both;
+}
+.kpi-card:hover { transform:translateY(-3px); box-shadow:var(--sh-lg); }
+.kpi-card::after {
+  content:'';
+  position:absolute; top:0; left:0; right:0; height:3px;
+  border-radius:var(--r-lg) var(--r-lg) 0 0;
+}
+.kpi-card.c-rose::after      { background:var(--rose); }
+.kpi-card.c-success::after   { background:var(--success); }
+.kpi-card.c-warning::after   { background:var(--caramel); }
+.kpi-card.c-info::after      { background:var(--info); }
+.kpi-card.c-lavender::after  { background:var(--lavender); }
+.kpi-card.c-gold::after      { background:var(--gold); }
+
+.kpi-icon { font-size:1.4rem; margin-bottom:6px; }
+.kpi-label { font-size:.68rem; font-weight:600; text-transform:uppercase; letter-spacing:.5px; color:var(--txt-3); margin-bottom:2px; }
+.kpi-val {
+  font-family:var(--ff-display);
+  font-size:2.1rem; font-weight:700;
+  color:var(--txt); line-height:1.1;
+}
+.kpi-val-sm {
+  font-family:var(--ff-display);
+  font-size:1.1rem; font-weight:600;
+  color:var(--txt); line-height:1.3;
+}
+.kpi-sub { font-size:.72rem; color:var(--txt-3); margin-top:4px; }
+
+/* ─── CHART CARDS ────────────────────────────────────── */
+.charts-row {
+  display:flex; gap:12px; margin-bottom:12px; flex-wrap:wrap;
+}
+.chart-card {
+  background:var(--card);
+  border-radius:var(--r-lg);
+  border:1px solid var(--border-lt);
+  box-shadow:var(--sh-md);
+  overflow:hidden; flex:1; min-width:0;
+  animation:fadeUp .5s ease both;
+}
+.chart-card.w2  { flex:2.2; min-width:300px; }
+.chart-card.w1  { flex:1;   min-width:240px; }
+.chart-card.w3  { flex:1;   min-width:200px; }
+
+.cc-head {
+  padding:16px 20px 12px;
+  border-bottom:1px solid var(--border-lt);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.cc-head h3 { font-family:var(--ff-display); font-size:1rem; font-weight:600; color:var(--txt); }
+.cc-head p  { font-size:.73rem; color:var(--txt-3); margin-top:1px; }
+.cc-body { padding:16px; height:230px; position:relative; }
+.cc-body canvas { max-width:100%; }
+
+/* ─── GOAL BAR ───────────────────────────────────────── */
+.goal-section {
+  background:var(--card);
+  border-radius:var(--r-lg);
+  border:1px solid var(--border-lt);
+  box-shadow:var(--sh-md);
+  padding:20px 24px;
+  margin-bottom:12px;
+  display:flex; align-items:center; gap:24px; flex-wrap:wrap;
+  animation:fadeUp .5s ease both;
+}
+.goal-label { font-size:.82rem; font-weight:600; color:var(--txt-2); white-space:nowrap; }
+.goal-bar-wrap { flex:1; min-width:200px; }
+.goal-bar-track {
+  height:10px; border-radius:var(--r-full);
+  background:var(--cream-2); overflow:hidden;
+}
+.goal-bar-fill {
+  height:100%;
+  border-radius:var(--r-full);
+  background:linear-gradient(90deg, var(--rose), var(--caramel));
+  transition:width 1.5s cubic-bezier(.4,0,.2,1);
+  width:0%;
+}
+.goal-pct { font-family:var(--ff-display); font-size:1.4rem; font-weight:700; color:var(--rose); white-space:nowrap; }
+.goal-detail { font-size:.75rem; color:var(--txt-3); }
+
+/* ─── BOTTOM ROW ─────────────────────────────────────── */
+.bottom-row { display:flex; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+.panel {
+  background:var(--card);
+  border-radius:var(--r-lg);
+  border:1px solid var(--border-lt);
+  box-shadow:var(--sh-md);
+  overflow:hidden; flex:1; min-width:280px;
+  animation:fadeUp .5s ease both;
+}
+.panel-head {
+  padding:16px 20px 12px;
+  border-bottom:1px solid var(--border-lt);
+  background:linear-gradient(135deg,var(--cream) 0%,var(--card) 100%);
+}
+.panel-head h3 { font-family:var(--ff-display); font-size:1rem; font-weight:600; color:var(--txt); }
+.panel-head p  { font-size:.73rem; color:var(--txt-3); margin-top:1px; }
+.panel-body    { padding:12px; max-height:340px; overflow-y:auto; }
+
+/* Custom scrollbar */
+.panel-body::-webkit-scrollbar { width:4px; }
+.panel-body::-webkit-scrollbar-track { background:transparent; }
+.panel-body::-webkit-scrollbar-thumb { background:var(--border); border-radius:var(--r-full); }
+
+/* ─── INSIGHTS ───────────────────────────────────────── */
+.insight-item {
+  display:flex; gap:12px; align-items:flex-start;
+  padding:10px 12px;
+  border-radius:var(--r-md);
+  background:var(--cream);
+  border:1px solid var(--border-lt);
+  margin-bottom:8px;
+  animation:slideIn .35s ease both;
+  opacity:0;
+}
+@keyframes slideIn { to { opacity:1; transform:translateY(0); } }
+.insight-item { transform:translateY(6px); }
+.ins-icon { font-size:1.2rem; flex-shrink:0; margin-top:1px; }
+.ins-text { font-size:.83rem; color:var(--txt-2); line-height:1.5; }
+.ins-cat { font-size:.67rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--rose); margin-top:2px; }
+
+/* ─── OPERATIONS ─────────────────────────────────────── */
+.ops-item {
+  display:grid;
+  grid-template-columns:1fr auto auto;
+  gap:12px; align-items:center;
+  padding:9px 12px;
+  border-radius:var(--r-md);
+  border:1px solid var(--border-lt);
+  margin-bottom:6px;
+  transition:background .15s;
+}
+.ops-item:hover { background:var(--cream); }
+.ops-name { font-weight:600; font-size:.85rem; color:var(--txt); }
+.ops-phone { font-size:.73rem; color:var(--txt-3); }
+.evt-badge {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:3px 10px;
+  border-radius:var(--r-full);
+  font-size:.72rem; font-weight:600;
+  white-space:nowrap;
+}
+.ops-date { font-size:.78rem; color:var(--txt-3); white-space:nowrap; }
+.ops-status-dot {
+  width:8px; height:8px; border-radius:50%;
+  flex-shrink:0;
+}
+.ops-status-dot.pending  { background:var(--caramel); }
+.ops-status-dot.complete { background:var(--success); }
+
+.empty-state {
+  text-align:center; color:var(--txt-3);
+  font-size:.85rem; padding:32px;
+}
+
+/* ─── TABLE SECTION ──────────────────────────────────── */
+.table-section {
+  background:var(--card);
+  border-radius:var(--r-lg);
+  border:1px solid var(--border-lt);
+  box-shadow:var(--sh-md);
+  overflow:hidden;
+  margin-bottom:24px;
+  animation:fadeUp .5s ease both;
+}
+.table-top {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 20px;
+  border-bottom:1px solid var(--border-lt);
+  flex-wrap:wrap; gap:12px;
+}
+.table-top h3 { font-family:var(--ff-display); font-size:1rem; font-weight:600; color:var(--txt); }
+.table-top p  { font-size:.73rem; color:var(--txt-3); margin-top:1px; }
+.table-controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.tbl-search {
+  padding:7px 14px;
+  border-radius:var(--r-full);
+  border:1.5px solid var(--border);
+  background:var(--cream);
+  font-family:var(--ff-body); font-size:.83rem;
+  color:var(--txt); outline:none; width:210px;
+  transition:border-color .2s;
+}
+.tbl-search:focus { border-color:var(--rose); }
+.tbl-wrap { overflow-x:auto; }
+.data-tbl { width:100%; border-collapse:collapse; font-size:.83rem; }
+.data-tbl thead { background:var(--cream); }
+.data-tbl th {
+  padding:9px 14px;
+  text-align:left;
+  font-size:.67rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px;
+  color:var(--txt-3);
+  border-bottom:1px solid var(--border);
+  white-space:nowrap; cursor:pointer;
+  transition:color .15s;
+}
+.data-tbl th:hover { color:var(--rose); }
+.data-tbl td {
+  padding:9px 14px;
+  border-bottom:1px solid var(--border-lt);
+  color:var(--txt-2);
+  vertical-align:middle;
+}
+.data-tbl tbody tr {
+  animation:fadeIn .2s ease both;
+  opacity:0;
+  transition:background .12s;
+}
+.data-tbl tbody tr:hover { background:var(--cream); }
+.data-tbl tbody tr:last-child td { border-bottom:none; }
+
+@keyframes fadeIn  { to { opacity:1; } }
+@keyframes fadeUp  { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+.cust-cell { display:flex; align-items:center; gap:8px; white-space:nowrap; }
+.cust-av {
+  width:28px; height:28px; border-radius:50%;
+  background:var(--rose-lt); color:var(--rose-dk);
+  display:flex; align-items:center; justify-content:center;
+  font-size:.72rem; font-weight:700; flex-shrink:0;
+}
+.status-pill {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:3px 10px; border-radius:var(--r-full);
+  font-size:.7rem; font-weight:700;
+  white-space:nowrap;
+}
+.empty-cell { text-align:center; color:var(--txt-3); padding:40px; font-style:italic; }
+
+/* ─── PAGINATION ─────────────────────────────────────── */
+.pagination {
+  display:flex; align-items:center; justify-content:center;
+  gap:16px; padding:16px;
+  border-top:1px solid var(--border-lt);
+  font-size:.83rem; color:var(--txt-3);
+}
+.pg-btn {
+  padding:6px 14px;
+  border-radius:var(--r-full);
+  border:1.5px solid var(--border);
+  background:var(--card);
+  cursor:pointer;
+  font-family:var(--ff-body); font-size:.78rem; font-weight:500;
+  color:var(--txt-2);
+  transition:all .2s;
+}
+.pg-btn:hover:not(:disabled) { background:var(--rose); border-color:var(--rose); color:#fff; }
+.pg-btn:disabled { opacity:.35; cursor:not-allowed; }
+
+/* ─── FOOTER ─────────────────────────────────────────── */
+.app-footer {
+  padding:16px 0 24px;
+  border-top:1px solid var(--border-lt);
+  text-align:center;
+  font-size:.72rem; color:var(--txt-3);
+}
+
+/* ─── RTL ────────────────────────────────────────────── */
+[dir="rtl"] body { font-feature-settings: "kern"; }
+[dir="rtl"] .data-tbl th,
+[dir="rtl"] .data-tbl td { text-align: right; }
+[dir="rtl"] .cust-cell { flex-direction: row-reverse; justify-content: flex-end; }
+[dir="rtl"] .goal-bar-fill { background: linear-gradient(-90deg, var(--rose), var(--caramel)); }
+[dir="rtl"] .live-dot::before { margin-left: 0; margin-right: 0; }
+[dir="rtl"] .pg-btn#pg-prev::before { content: '→ '; }
+[dir="rtl"] .pg-btn#pg-next::after  { content: ' ←'; }
+[dir="rtl"] .insight-item { flex-direction: row-reverse; text-align: right; }
+[dir="rtl"] .ops-item { direction: rtl; }
+[dir="rtl"] .kpi-card::after { border-radius: 0 var(--r-lg) var(--r-lg) 0; }
+[dir="rtl"] .filter-bar { flex-direction: row-reverse; }
+[dir="rtl"] .quick-btns { flex-direction: row-reverse; }
+[dir="rtl"] .filter-controls { flex-direction: row-reverse; }
+
+/* ─── PRINT ──────────────────────────────────────────── */
+@media print {
+  .filter-bar,.table-controls,.pagination,.btn-outline,.icon-btn,.app-footer,.quick-btns { display:none!important; }
+  .chart-card,.panel,.kpi-card { break-inside:avoid; box-shadow:none!important; border:1px solid #ddd!important; }
+  body { background:#fff!important; }
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading-overlay">
+  <div class="load-logo">🧁 Libi's<span>.</span></div>
+  <div class="load-spinner"></div>
+  <div class="load-sub">טוען מידע עסקי…</div>
+</div>
+
+<div id="error-banner"></div>
+
+<div class="app">
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="h-left">
+      <div class="logo"><span class="logo-emoji">🧁</span> Libi's Sweet</div>
+      <div class="tagline">לוח בקרה עסקי</div>
+    </div>
+    <div class="h-right">
+      <span class="live-dot">חי</span>
+      <span class="refresh-info" id="last-refresh"></span>
+      <button class="icon-btn" id="refresh-btn" title="רענן נתונים">↻</button>
+      <button class="icon-btn" id="dark-toggle" title="מצב לילה"><span id="dark-icon">🌙</span></button>
+      <button class="btn-outline" id="export-pdf">⬇ PDF</button>
+      <button class="btn-outline" id="export-csv-top">⬇ CSV</button>
+    </div>
+  </header>
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+    <div class="quick-btns">
+      <button class="q-btn active" data-range="all">כל הזמן</button>
+      <button class="q-btn" data-range="today">היום</button>
+      <button class="q-btn" data-range="week">השבוע</button>
+      <button class="q-btn" data-range="month">החודש</button>
+      <button class="q-btn" data-range="year">השנה</button>
+    </div>
+    <div class="filter-divider"></div>
+    <div class="filter-controls">
+      <div class="fg">
+        <label>מתאריך</label>
+        <input type="date" id="date-from">
+      </div>
+      <div class="fg">
+        <label>עד תאריך</label>
+        <input type="date" id="date-to">
+      </div>
+      <div class="fg">
+        <label>סוג אירוע</label>
+        <select id="filter-event">
+          <option value="">כל האירועים</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>סטטוס</label>
+        <select id="filter-status">
+          <option value="">כל הסטטוסים</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>לקוח</label>
+        <input type="text" id="filter-customer" placeholder="חיפוש…">
+      </div>
+    </div>
+  </div>
+
+  <!-- KPI SECTION -->
+  <div class="kpi-grid">
+    <div class="kpi-card c-rose" style="animation-delay:.05s">
+      <div class="kpi-icon">📋</div>
+      <div class="kpi-label">סה״כ הזמנות</div>
+      <div class="kpi-val" id="kv-total">—</div>
+      <div class="kpi-sub" id="ks-total"></div>
+    </div>
+    <div class="kpi-card c-success" style="animation-delay:.10s">
+      <div class="kpi-icon">✅</div>
+      <div class="kpi-label">הושלמו</div>
+      <div class="kpi-val" id="kv-done">—</div>
+      <div class="kpi-sub" id="ks-done"></div>
+    </div>
+    <div class="kpi-card c-warning" style="animation-delay:.15s">
+      <div class="kpi-icon">⏳</div>
+      <div class="kpi-label">ממתינות</div>
+      <div class="kpi-val" id="kv-new">—</div>
+      <div class="kpi-sub" id="ks-new"></div>
+    </div>
+    <div class="kpi-card c-info" style="animation-delay:.20s">
+      <div class="kpi-icon">👥</div>
+      <div class="kpi-label">לקוחות</div>
+      <div class="kpi-val" id="kv-custs">—</div>
+      <div class="kpi-sub" id="ks-custs"></div>
+    </div>
+    <div class="kpi-card c-lavender" style="animation-delay:.25s">
+      <div class="kpi-icon">📊</div>
+      <div class="kpi-label">אחוז השלמה</div>
+      <div class="kpi-val" id="kv-rate">—</div>
+      <div class="kpi-sub" id="ks-rate"></div>
+    </div>
+    <div class="kpi-card c-gold" style="animation-delay:.30s">
+      <div class="kpi-icon">🏆</div>
+      <div class="kpi-label">אירוע מוביל</div>
+      <div class="kpi-val-sm" id="kv-top">—</div>
+      <div class="kpi-sub" id="ks-top"></div>
+    </div>
+  </div>
+
+  <!-- GOAL BAR -->
+  <div class="goal-section" style="animation-delay:.35s">
+    <div>
+      <div class="goal-label">📈 יעד השלמה חודשי</div>
+      <div class="goal-detail" id="goal-detail">מעקב ביצוע הזמנות</div>
+    </div>
+    <div class="goal-bar-wrap">
+      <div class="goal-bar-track">
+        <div class="goal-bar-fill" id="goal-bar"></div>
+      </div>
+    </div>
+    <div class="goal-pct" id="goal-pct">0%</div>
+  </div>
+
+  <!-- CHARTS ROW 1 -->
+  <div class="charts-row">
+    <div class="chart-card w2" style="animation-delay:.40s">
+      <div class="cc-head">
+        <div>
+          <h3>ציר זמן הזמנות</h3>
+          <p>נפח הזמנות יומי לאורך זמן</p>
+        </div>
+      </div>
+      <div class="cc-body"><canvas id="c-timeline"></canvas></div>
+    </div>
+    <div class="chart-card w1" style="animation-delay:.45s">
+      <div class="cc-head">
+        <div>
+          <h3>סוגי אירועים</h3>
+          <p>התפלגות לפי סוג אירוע</p>
+        </div>
+      </div>
+      <div class="cc-body"><canvas id="c-events"></canvas></div>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW 2 -->
+  <div class="charts-row">
+    <div class="chart-card w3" style="animation-delay:.50s">
+      <div class="cc-head">
+        <div><h3>סטטוס הזמנות</h3><p>הושלמו מול ממתינות</p></div>
+      </div>
+      <div class="cc-body"><canvas id="c-status"></canvas></div>
+    </div>
+    <div class="chart-card w3" style="animation-delay:.55s">
+      <div class="cc-head">
+        <div><h3>הזמנות לפי יום</h3><p>הימים המובילים</p></div>
+      </div>
+      <div class="cc-body"><canvas id="c-dow"></canvas></div>
+    </div>
+    <div class="chart-card w3" style="animation-delay:.60s">
+      <div class="cc-head">
+        <div><h3>דפוס שעתי</h3><p>שעות שיא להזמנות</p></div>
+      </div>
+      <div class="cc-body"><canvas id="c-hourly"></canvas></div>
+    </div>
+  </div>
+
+  <!-- BOTTOM ROW: INSIGHTS + OPERATIONS -->
+  <div class="bottom-row">
+    <div class="panel" style="animation-delay:.65s">
+      <div class="panel-head">
+        <h3>🧠 תובנות חכמות</h3>
+        <p>המלצות עסקיות מבוססות AI</p>
+      </div>
+      <div class="panel-body" id="insights-list">
+        <div class="empty-state">טוען תובנות…</div>
+      </div>
+    </div>
+    <div class="panel" style="animation-delay:.70s">
+      <div class="panel-head">
+        <h3>📦 הזמנות ממתינות</h3>
+        <p>הזמנות הממתינות לביצוע</p>
+      </div>
+      <div class="panel-body" id="ops-list">
+        <div class="empty-state">אין הזמנות ממתינות 🎉</div>
+      </div>
+    </div>
+    <div class="panel" style="animation-delay:.75s">
+      <div class="panel-head">
+        <h3>👑 לקוחות מובילים</h3>
+        <p>הלקוחות התדירים ביותר</p>
+      </div>
+      <div class="panel-body" id="top-customers">
+        <div class="empty-state">טוען…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DATA TABLE -->
+  <div class="table-section">
+    <div class="table-top">
+      <div>
+        <h3>📊 כל ההזמנות</h3>
+        <p>היסטוריית הזמנות מלאה — בזמן אמת מ-Google Sheets</p>
+      </div>
+      <div class="table-controls">
+        <input type="text" class="tbl-search" id="tbl-search" placeholder="חיפוש הזמנות…">
+        <button class="btn-outline" id="export-csv">⬇ CSV</button>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="data-tbl">
+        <thead>
+          <tr>
+            <th data-col="Timestamp">תאריך ↕</th>
+            <th data-col="Customer Name">לקוח ↕</th>
+            <th data-col="Phone">טלפון</th>
+            <th data-col="Event Type">אירוע ↕</th>
+            <th data-col="Event Date">תאריך אירוע ↕</th>
+            <th data-col="Notes">הערות</th>
+            <th data-col="Status">סטטוס ↕</th>
+          </tr>
+        </thead>
+        <tbody id="tbl-body">
+          <tr><td colspan="7" class="empty-cell">טוען נתונים…</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pagination">
+      <button class="pg-btn" id="pg-prev" disabled>הקודם ←</button>
+      <span id="pg-info">עמוד 1 מתוך 1</span>
+      <button class="pg-btn" id="pg-next">→ הבא</button>
+    </div>
+  </div>
+
+  <footer class="app-footer">
+    לוח בקרה עסקי — Libi's Sweet &nbsp;•&nbsp; מחובר ל-Google Sheets &nbsp;•&nbsp; מתרענן אוטומטית כל 5 דקות
+  </footer>
+</div><!-- /app -->
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   CONFIGURATION
+═══════════════════════════════════════════════════════ */
+const SHEET_ID  = '1Yexy_sK2Io66GQOaa5AnrgVLRsHuT91X1FBG0-QxwMM';
+const SHEET_GID = '0';
+const CSV_URL   = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${SHEET_GID}`;
+const REFRESH_MS = 300_000;
+const PAGE_SIZE  = 10;
+
+/* ═══════════════════════════════════════════════════════
+   MAPPINGS
+═══════════════════════════════════════════════════════ */
+const EVENTS = {
+  'יום הולדת':       { en:'יום הולדת',   emoji:'🎂', color:'#C4687A' },
+  'חתונה':           { en:'חתונה',        emoji:'💍', color:'#C4875A' },
+  'ימי נישואין':     { en:'ימי נישואין',  emoji:'💕', color:'#9B8EC4' },
+  'בר / בת מצווה':  { en:'בר/בת מצווה', emoji:'✡️', color:'#5A87C4' },
+  'ברית / שמחת בת': { en:'ברית/שמחת בת',emoji:'🕊️', color:'#7A9E6E' },
+};
+const STATUS = {
+  'השלמה':       { en:'הושלמה',      color:'#4A8B5C', bg:'#E8F5ED', icon:'✓' },
+  'הושלמה':      { en:'הושלמה',      color:'#4A8B5C', bg:'#E8F5ED', icon:'✓' },
+  'הזמנה חדשה':  { en:'הזמנה חדשה', color:'#C4875A', bg:'#FBF0E6', icon:'⏳' },
+  'הזמנה חדש':   { en:'הזמנה חדשה', color:'#C4875A', bg:'#FBF0E6', icon:'⏳' },
+};
+
+/* ═══════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════ */
+let ALL = [], FILTERED = [];
+let charts = {};
+let page = 1;
+let sortCol = 'Timestamp', sortDir = -1;
+let filters = { from:null, to:null, event:'', status:'', customer:'' };
+
+/* ═══════════════════════════════════════════════════════
+   CSV PARSING
+═══════════════════════════════════════════════════════ */
+function parseRow(line) {
+  const r = []; let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { if (inQ && line[i+1] === '"') { cur+='"'; i++; } else inQ=!inQ; }
+    else if (c === ',' && !inQ) { r.push(cur); cur=''; }
+    else cur += c;
+  }
+  r.push(cur); return r;
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = parseRow(lines[0]).map(h => h.trim());
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const vals = parseRow(lines[i]);
+    const obj = {};
+    headers.forEach((h, idx) => { obj[h] = (vals[idx] || '').trim(); });
+    rows.push(obj);
+  }
+  return rows;
+}
+
+/* ═══════════════════════════════════════════════════════
+   DATE HELPERS
+═══════════════════════════════════════════════════════ */
+function parseDate(s) {
+  if (!s) return null;
+  // Handle Google Sheets timestamp: M/D/YYYY H:MM:SS
+  let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})/);
+  if (m) return new Date(+m[3], +m[1]-1, +m[2], +m[4], +m[5], +m[6]);
+  // D.M.YYYY
+  m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  if (m) return new Date(+m[3], +m[2]-1, +m[1]);
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+
+function fmtDate(s) {
+  const d = parseDate(s);
+  if (!d) return s || '—';
+  return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+/* ═══════════════════════════════════════════════════════
+   FETCH
+═══════════════════════════════════════════════════════ */
+async function fetchData() {
+  showLoad(true);
+  try {
+    let text;
+    try {
+      const r = await fetch(CSV_URL);
+      if (!r.ok) throw 0;
+      text = await r.text();
+    } catch {
+      const r = await fetch(`https://corsproxy.io/?${encodeURIComponent(CSV_URL)}`);
+      text = await r.text();
+    }
+    const rows = parseCSV(text);
+    // Keep only rows with a real timestamp (order rows, not summary rows)
+    ALL = rows.filter(r => {
+      const ts = r['Timestamp'] || '';
+      return /\d{1,2}[\/\.]\d{1,2}[\/\.]\d{4}/.test(ts);
+    });
+    populateFilterOptions();
+    applyFilters();
+    setLastRefresh();
+  } catch(e) {
+    showErr('⚠️ לא ניתן לטעון נתונים. ודא שהגיליון ציבורי.');
+    console.error(e);
+  } finally {
+    showLoad(false);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   FILTERING
+═══════════════════════════════════════════════════════ */
+function applyFilters() {
+  FILTERED = ALL.filter(r => {
+    const ts = parseDate(r['Timestamp']);
+    if (filters.from && ts && ts < filters.from) return false;
+    if (filters.to   && ts && ts > filters.to)   return false;
+    if (filters.event  && r['Event Type'] !== filters.event)   return false;
+    if (filters.status && r['Status']     !== filters.status)  return false;
+    if (filters.customer) {
+      const q = filters.customer.toLowerCase();
+      if (!(r['Customer Name']||'').toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+  page = 1;
+  render();
+}
+
+/* ═══════════════════════════════════════════════════════
+   KPIs
+═══════════════════════════════════════════════════════ */
+function calcKPIs(data) {
+  const total    = data.length;
+  const done     = data.filter(r => r['Status'] === 'השלמה' || r['Status'] === 'הושלמה').length;
+  const pending  = total - done;
+  const custs    = new Set(data.map(r=>r['Customer Name']).filter(Boolean)).size;
+  const rate     = total ? Math.round(done/total*100) : 0;
+
+  const evtCnt = {};
+  data.forEach(r => { const e=r['Event Type']; if(e) evtCnt[e]=(evtCnt[e]||0)+1; });
+  const topEvt = Object.entries(evtCnt).sort((a,b)=>b[1]-a[1])[0];
+
+  return { total, done, pending, custs, rate, topEvt, evtCnt };
+}
+
+/* ═══════════════════════════════════════════════════════
+   COUNTER ANIMATION
+═══════════════════════════════════════════════════════ */
+function counter(id, target, fmt=(n)=>n.toLocaleString()) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const start = performance.now();
+  const dur = 1100;
+  function tick(now) {
+    const p = Math.min((now-start)/dur, 1);
+    const e = 1-Math.pow(1-p,3);
+    el.textContent = fmt(Math.round(e*target));
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ═══════════════════════════════════════════════════════
+   RENDER ALL
+═══════════════════════════════════════════════════════ */
+function render() {
+  const kpis = calcKPIs(FILTERED);
+  renderKPIs(kpis);
+  renderGoalBar(kpis);
+  renderCharts(FILTERED);
+  renderInsights(FILTERED, kpis);
+  renderOps(FILTERED);
+  renderTopCustomers(FILTERED);
+  renderTable();
+}
+
+/* ─── KPIs ─────────────────────────────────────────── */
+function renderKPIs(k) {
+  counter('kv-total',  k.total);
+  counter('kv-done',   k.done);
+  counter('kv-new',    k.pending);
+  counter('kv-custs',  k.custs);
+  document.getElementById('kv-rate').textContent = k.rate + '%';
+  document.getElementById('ks-rate').textContent = `מתוך ${k.total} הזמנות הושלמו`;
+
+  if (k.topEvt) {
+    const m = EVENTS[k.topEvt[0]] || {};
+    document.getElementById('kv-top').textContent = `${m.emoji||''} ${m.en||k.topEvt[0]}`;
+    document.getElementById('ks-top').textContent = `${k.topEvt[1]} הזמנות`;
+  }
+  document.getElementById('ks-total').textContent = 'בסה״כ';
+  const doneEl = document.getElementById('ks-done');
+  if (doneEl) doneEl.textContent = k.total ? `${k.rate}% אחוז השלמה` : '';
+  const newEl = document.getElementById('ks-new');
+  if (newEl) newEl.textContent = k.pending ? 'נדרשת פעולה' : 'הכל תקין 🎉';
+  const custsEl = document.getElementById('ks-custs');
+  if (custsEl) custsEl.textContent = k.total ? `${Math.round(k.total/Math.max(k.custs,1)*10)/10} הזמנות/לקוח` : '';
+}
+
+/* ─── GOAL BAR ─────────────────────────────────────── */
+function renderGoalBar(k) {
+  const pct = Math.min(k.rate, 100);
+  document.getElementById('goal-bar').style.width = pct + '%';
+  document.getElementById('goal-pct').textContent = pct + '%';
+  document.getElementById('goal-detail').textContent =
+    `${k.done} הושלמו מתוך ${k.total} הזמנות בסה״כ`;
+}
+
+/* ─── CSS VAR HELPER ───────────────────────────────── */
+function cv(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+/* ─── CHART DEFAULTS ───────────────────────────────── */
+function baseScales() {
+  return {
+    x: { grid:{ color:'rgba(0,0,0,0.04)', drawBorder:false },
+         ticks:{ font:{family:'DM Sans',size:10}, color:cv('--latte') } },
+    y: { beginAtZero:true, grid:{ color:'rgba(0,0,0,0.04)', drawBorder:false },
+         ticks:{ font:{family:'DM Sans',size:10}, color:cv('--latte'), precision:0 } }
+  };
+}
+function baseLegend(pos='bottom') {
+  return { position:pos, labels:{ font:{family:'DM Sans',size:11}, color:cv('--coffee'),
+    padding:14, usePointStyle:true, pointStyleWidth:9 } };
+}
+
+/* ═══════════════════════════════════════════════════════
+   CHARTS
+═══════════════════════════════════════════════════════ */
+function renderCharts(data) {
+  chartTimeline(data);
+  chartEvents(data);
+  chartStatus(data);
+  chartDOW(data);
+  chartHourly(data);
+}
+
+function destroy(key) { if (charts[key]) { charts[key].destroy(); charts[key]=null; } }
+
+/* Timeline */
+function chartTimeline(data) {
+  destroy('timeline');
+  const byDate = {};
+  data.forEach(r => {
+    const d = parseDate(r['Timestamp']);
+    if (!d) return;
+    const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    byDate[k] = (byDate[k]||0)+1;
+  });
+  const sorted = Object.entries(byDate).sort(([a],[b])=>a.localeCompare(b));
+  const labels = sorted.map(([d])=>{ const [,m,day]=d.split('-'); return `${day}/${m}`; });
+  const vals   = sorted.map(([,v])=>v);
+  let cum=0; const cumVals = vals.map(v=>(cum+=v,cum));
+
+  const ctx = document.getElementById('c-timeline').getContext('2d');
+  const g   = ctx.createLinearGradient(0,0,0,200);
+  g.addColorStop(0,'rgba(196,104,122,.25)'); g.addColorStop(1,'rgba(196,104,122,0)');
+
+  charts.timeline = new Chart(ctx, {
+    type:'line',
+    data:{ labels, datasets:[
+      { label:'הזמנות יומיות', data:vals, borderColor:'#C4687A', backgroundColor:g,
+        borderWidth:2.5, pointBackgroundColor:'#C4687A', pointRadius:4,
+        pointHoverRadius:7, fill:true, tension:.4 },
+      { label:'מצטבר', data:cumVals, borderColor:'#C4875A', backgroundColor:'transparent',
+        borderWidth:1.8, pointRadius:0, fill:false, tension:.4, borderDash:[5,3] }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:baseLegend('top'), tooltip:{ mode:'index', intersect:false } },
+      scales:baseScales() }
+  });
+}
+
+/* Event type donut */
+function chartEvents(data) {
+  destroy('events');
+  const cnt = {};
+  data.forEach(r=>{ const e=r['Event Type']; if(e) cnt[e]=(cnt[e]||0)+1; });
+  const labels = Object.keys(cnt).map(k=>{ const m=EVENTS[k]||{}; return `${m.emoji||''} ${m.en||k}`; });
+  const vals   = Object.values(cnt);
+  const colors = Object.keys(cnt).map(k=>EVENTS[k]?.color||'#C4687A');
+
+  charts.events = new Chart(document.getElementById('c-events'), {
+    type:'doughnut',
+    data:{ labels, datasets:[{ data:vals, backgroundColor:colors,
+      borderWidth:3, borderColor:cv('--card'), hoverOffset:8 }]},
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'68%',
+      plugins:{ legend:baseLegend('bottom'),
+        tooltip:{ callbacks:{ label:c=> ` ${c.label}: ${c.raw} (${Math.round(c.raw/vals.reduce((a,b)=>a+b,0)*100)}%)` } } } }
+  });
+}
+
+/* Status bar */
+function chartStatus(data) {
+  destroy('status');
+  const done    = data.filter(r=>r['Status']==='השלמה'||r['Status']==='הושלמה').length;
+  const pending = data.filter(r=>(r['Status']||'').includes('הזמנה')).length;
+  charts.status = new Chart(document.getElementById('c-status'), {
+    type:'bar',
+    data:{ labels:['הושלמו','ממתינות'],
+      datasets:[{ data:[done,pending], backgroundColor:['#4A8B5C','#C4875A'],
+        borderRadius:8, borderSkipped:false }]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.raw} orders`}} },
+      scales:baseScales() }
+  });
+}
+
+/* Day of week */
+function chartDOW(data) {
+  destroy('dow');
+  const days=['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
+  const cnt=new Array(7).fill(0);
+  data.forEach(r=>{ const d=parseDate(r['Timestamp']); if(d) cnt[d.getDay()]++; });
+  const mx=Math.max(...cnt,1);
+  const colors=cnt.map(v=>`rgba(196,104,122,${.15+.85*(v/mx)})`);
+  charts.dow = new Chart(document.getElementById('c-dow'), {
+    type:'bar',
+    data:{ labels:days, datasets:[{ data:cnt, backgroundColor:colors, borderRadius:6, borderSkipped:false }]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}}, scales:baseScales() }
+  });
+}
+
+/* Hourly */
+function chartHourly(data) {
+  destroy('hourly');
+  const cnt=new Array(24).fill(0);
+  data.forEach(r=>{ const d=parseDate(r['Timestamp']); if(d) cnt[d.getHours()]++; });
+  const labels=Array.from({length:18},(_,i)=>`${i+6}h`);
+  const vals=cnt.slice(6,24);
+  const ctx=document.getElementById('c-hourly').getContext('2d');
+  const g=ctx.createLinearGradient(0,0,0,160);
+  g.addColorStop(0,'rgba(196,138,85,.55)'); g.addColorStop(1,'rgba(196,138,85,.05)');
+  charts.hourly = new Chart(ctx, {
+    type:'bar',
+    data:{ labels, datasets:[{ data:vals, backgroundColor:g, borderRadius:4, borderSkipped:false }]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}}, scales:baseScales() }
+  });
+}
+
+/* ═══════════════════════════════════════════════════════
+   INSIGHTS
+═══════════════════════════════════════════════════════ */
+function renderInsights(data, k) {
+  const list = document.getElementById('insights-list');
+  if (!data.length) { list.innerHTML='<div class="empty-state">אין נתונים לתובנות.</div>'; return; }
+
+  const ins = [];
+
+  // Completion rate
+  if (k.rate >= 50)
+    ins.push({ icon:'✅', text:`אחוז השלמה ${k.rate}% — ביצועי מילוי הזמנות מצוינים.`, cat:'ביצועים' });
+  else
+    ins.push({ icon:'⚠️', text:`אחוז השלמה ${k.rate}%. מומלץ לתעדף הזמנות ממתינות.`, cat:'נדרשת פעולה' });
+
+  // Top event
+  if (k.topEvt) {
+    const m=EVENTS[k.topEvt[0]]||{};
+    const pct=Math.round(k.topEvt[1]/data.length*100);
+    ins.push({ icon:m.emoji||'🎉', text:`הזמנות ${m.en||k.topEvt[0]} מהוות ${pct}% מכלל ההזמנות.`, cat:'תובנת מוצר' });
+  }
+
+  // Best day
+  const dayNames=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+  const dc=new Array(7).fill(0);
+  data.forEach(r=>{ const d=parseDate(r['Timestamp']); if(d) dc[d.getDay()]++; });
+  const bestDay=dc.indexOf(Math.max(...dc));
+  if(dc[bestDay]>0)
+    ins.push({ icon:'📅', text:`יום ${dayNames[bestDay]} הוא היום העמוס ביותר עם ${dc[bestDay]} הזמנות. תכנן את הצוות בהתאם.`, cat:'תפעול' });
+
+  // Peak hour
+  const hc=new Array(24).fill(0);
+  data.forEach(r=>{ const d=parseDate(r['Timestamp']); if(d) hc[d.getHours()]++; });
+  const ph=hc.indexOf(Math.max(...hc));
+  if(hc[ph]>0)
+    ins.push({ icon:'⏰', text:`שעת השיא להזמנות היא ${ph}:00–${ph+1}:00. ודא שהצוות מוכן.`, cat:'תפעול' });
+
+  // Returning customers
+  const co={};
+  data.forEach(r=>{ const c=r['Customer Name']; if(c) co[c]=(co[c]||0)+1; });
+  const returning=Object.values(co).filter(v=>v>1).length;
+  const totalC=Object.keys(co).length;
+  if(totalC>0) {
+    const rPct=Math.round(returning/totalC*100);
+    ins.push({ icon:'💝', text:`${rPct}% מהלקוחות ביצעו הזמנות חוזרות. שקול להשיק תוכנית נאמנות.`, cat:'לקוחות' });
+  }
+
+  // Pending
+  if(k.pending>0)
+    ins.push({ icon:'📦', text:`${k.pending} הזמנות ממתינות לביצוע. בדוק ואשר מול הלקוחות.`, cat:'נדרשת פעולה' });
+
+  // Least popular event type
+  const sorted=Object.entries(k.evtCnt).sort((a,b)=>a[1]-b[1]);
+  if(sorted.length>1) {
+    const [lk,lv]=sorted[0];
+    const m=EVENTS[lk]||{};
+    ins.push({ icon:'💡', text:`לאירועי ${m.en||lk} יש רק ${lv} הזמנות. שקול מבצע שיווקי לקטגוריה זו.`, cat:'צמיחה' });
+  }
+
+  list.innerHTML = ins.map((item,i)=>`
+    <div class="insight-item" style="animation-delay:${i*.08}s">
+      <div class="ins-icon">${item.icon}</div>
+      <div>
+        <div class="ins-text">${item.text}</div>
+        <div class="ins-cat">${item.cat}</div>
+      </div>
+    </div>`).join('');
+}
+
+/* ═══════════════════════════════════════════════════════
+   OPERATIONS PANEL
+═══════════════════════════════════════════════════════ */
+function renderOps(data) {
+  const pending = data.filter(r=>(r['Status']||'').includes('הזמנה'));
+  const el = document.getElementById('ops-list');
+  if (!pending.length) { el.innerHTML='<div class="empty-state">אין הזמנות ממתינות 🎉</div>'; return; }
+  el.innerHTML = pending.slice(0,8).map(r=>{
+    const m=EVENTS[r['Event Type']]||{};
+    return `
+    <div class="ops-item">
+      <div>
+        <div class="ops-name">${r['Customer Name']||'—'}</div>
+        <div class="ops-phone">${r['Phone']||''}</div>
+      </div>
+      <span class="evt-badge" style="background:${m.color||'#C4687A'}20;color:${m.color||'#C4687A'}">${m.emoji||''} ${m.en||r['Event Type']||'—'}</span>
+      <div class="ops-date">${r['Event Date']||'—'}</div>
+    </div>`;
+  }).join('') + (pending.length>8?`<div style="text-align:center;padding:8px;font-size:.75rem;color:var(--txt-3)">+${pending.length-8} נוספות</div>`:'');
+}
+
+/* ═══════════════════════════════════════════════════════
+   TOP CUSTOMERS
+═══════════════════════════════════════════════════════ */
+function renderTopCustomers(data) {
+  const co = {};
+  data.forEach(r=>{ const c=r['Customer Name']; if(c) co[c]=(co[c]||0)+1; });
+  const top = Object.entries(co).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const el = document.getElementById('top-customers');
+  if(!top.length){ el.innerHTML='<div class="empty-state">אין נתונים.</div>'; return; }
+  const max=top[0][1];
+  el.innerHTML = top.map(([name,cnt],i)=>`
+    <div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+        <span style="font-size:.83rem;font-weight:600;color:var(--txt-2)">${i+1}. ${name}</span>
+        <span style="font-size:.78rem;color:var(--txt-3)">${cnt} הזמנות</span>
+      </div>
+      <div style="height:6px;border-radius:99px;background:var(--cream-2);overflow:hidden">
+        <div style="height:100%;width:${Math.round(cnt/max*100)}%;background:linear-gradient(90deg,var(--rose),var(--caramel));border-radius:99px;transition:width 1s ease"></div>
+      </div>
+    </div>`).join('');
+}
+
+/* ═══════════════════════════════════════════════════════
+   DATA TABLE
+═══════════════════════════════════════════════════════ */
+function renderTable() {
+  const search = (document.getElementById('tbl-search').value||'').toLowerCase();
+  let rows = FILTERED;
+
+  if (search) rows = rows.filter(r=>Object.values(r).some(v=>(v||'').toLowerCase().includes(search)));
+
+  // Sort
+  rows = [...rows].sort((a,b)=>{
+    const av=(a[sortCol]||''), bv=(b[sortCol]||'');
+    const an=parseFloat(av), bn=parseFloat(bv);
+    if (!isNaN(an)&&!isNaN(bn)) return sortDir*(an-bn);
+    // Try date sort
+    const ad=parseDate(av), bd=parseDate(bv);
+    if(ad&&bd) return sortDir*(ad-bd);
+    return sortDir*av.localeCompare(bv);
+  });
+
+  const totalPages = Math.max(1, Math.ceil(rows.length/PAGE_SIZE));
+  if (page > totalPages) page = totalPages;
+  const pageRows = rows.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE);
+
+  const tbody = document.getElementById('tbl-body');
+  if (!pageRows.length) {
+    tbody.innerHTML='<tr><td colspan="7" class="empty-cell">לא נמצאו הזמנות.</td></tr>';
+  } else {
+    tbody.innerHTML = pageRows.map((r,i)=>{
+      const sm = STATUS[r['Status']] || { en:r['Status']||'—', color:'#999', bg:'#eee', icon:'○' };
+      const em = EVENTS[r['Event Type']] || {};
+      const init = (r['Customer Name']||'?')[0].toUpperCase();
+      return `
+      <tr style="animation-delay:${i*.025}s">
+        <td style="white-space:nowrap;font-size:.78rem">${fmtDate(r['Timestamp'])}</td>
+        <td><div class="cust-cell">
+          <div class="cust-av">${init}</div>
+          <span>${r['Customer Name']||'—'}</span>
+        </div></td>
+        <td style="white-space:nowrap">${r['Phone']||'—'}</td>
+        <td><span class="evt-badge" style="background:${em.color||'#C4687A'}18;color:${em.color||'#C4687A'}">${em.emoji||''} ${em.en||r['Event Type']||'—'}</span></td>
+        <td style="white-space:nowrap">${r['Event Date']||'—'}</td>
+        <td style="max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${r['Notes']||''}">${r['Notes']||'—'}</td>
+        <td><span class="status-pill" style="background:${sm.bg};color:${sm.color}">${sm.icon} ${sm.en}</span></td>
+      </tr>`;
+    }).join('');
+  }
+
+  document.getElementById('pg-info').textContent = `עמוד ${page} מתוך ${totalPages} (${rows.length} הזמנות)`;
+  document.getElementById('pg-prev').disabled = page <= 1;
+  document.getElementById('pg-next').disabled = page >= totalPages;
+}
+
+/* ═══════════════════════════════════════════════════════
+   FILTER OPTIONS
+═══════════════════════════════════════════════════════ */
+function populateFilterOptions() {
+  const evtSel = document.getElementById('filter-event');
+  const stsSel = document.getElementById('filter-status');
+  if (evtSel.options.length <= 1) {
+    [...new Set(ALL.map(r=>r['Event Type']).filter(Boolean))].forEach(e=>{
+      const m=EVENTS[e]||{};
+      evtSel.add(new Option(`${m.emoji||''} ${m.en||e}`, e));
+    });
+  }
+  if (stsSel.options.length <= 1) {
+    [...new Set(ALL.map(r=>r['Status']).filter(Boolean))].forEach(s=>{
+      const m=STATUS[s]||{};
+      stsSel.add(new Option(m.en||s, s));
+    });
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   QUICK RANGE
+═══════════════════════════════════════════════════════ */
+function setRange(range) {
+  document.querySelectorAll('.q-btn').forEach(b=>b.classList.toggle('active', b.dataset.range===range));
+  const now = new Date();
+  let from = null, to = null;
+  switch(range) {
+    case 'today': from=new Date(now.getFullYear(),now.getMonth(),now.getDate()); to=new Date(now.getFullYear(),now.getMonth(),now.getDate(),23,59,59); break;
+    case 'week':  from=new Date(now-7*86400000); to=now; break;
+    case 'month': from=new Date(now.getFullYear(),now.getMonth(),1); to=now; break;
+    case 'year':  from=new Date(now.getFullYear(),0,1); to=now; break;
+    default: from=null; to=null;
+  }
+  filters.from=from; filters.to=to;
+  document.getElementById('date-from').value = from ? from.toISOString().slice(0,10) : '';
+  document.getElementById('date-to').value   = to   ? to.toISOString().slice(0,10)   : '';
+  applyFilters();
+}
+
+/* ═══════════════════════════════════════════════════════
+   EXPORT
+═══════════════════════════════════════════════════════ */
+function exportCSV() {
+  if (!FILTERED.length) return;
+  const headers = Object.keys(FILTERED[0]);
+  const csv = [headers.join(','), ...FILTERED.map(r=>
+    headers.map(h=>`"${(r[h]||'').replace(/"/g,'""')}"`).join(',')
+  )].join('\n');
+  const url = URL.createObjectURL(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}));
+  Object.assign(document.createElement('a'),{href:url,download:`libis-orders-${new Date().toISOString().slice(0,10)}.csv`}).click();
+  URL.revokeObjectURL(url);
+}
+
+/* ═══════════════════════════════════════════════════════
+   DARK MODE
+═══════════════════════════════════════════════════════ */
+function toggleDark() {
+  const isDark = document.documentElement.dataset.theme === 'dark';
+  document.documentElement.dataset.theme = isDark ? 'light' : 'dark';
+  document.getElementById('dark-icon').textContent = isDark ? '🌙' : '☀️';
+  localStorage.setItem('libis-theme', isDark ? 'light' : 'dark');
+  // Redraw charts for correct colors
+  setTimeout(()=>renderCharts(FILTERED), 50);
+}
+
+/* ═══════════════════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════════════════ */
+function showLoad(on) {
+  const el = document.getElementById('loading-overlay');
+  if (on) { el.classList.remove('hide'); }
+  else    { setTimeout(()=>el.classList.add('hide'), 300); }
+}
+function showErr(msg) {
+  const el = document.getElementById('error-banner');
+  el.textContent = msg; el.style.display='block';
+  setTimeout(()=>el.style.display='none', 6000);
+}
+function setLastRefresh() {
+  const d = new Date();
+  document.getElementById('last-refresh').textContent =
+    `עודכן ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+/* ═══════════════════════════════════════════════════════
+   BOOT
+═══════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  // Theme
+  const saved = localStorage.getItem('libis-theme') || 'light';
+  document.documentElement.dataset.theme = saved;
+  document.getElementById('dark-icon').textContent = saved==='dark' ? '☀️' : '🌙';
+
+  // Quick filter buttons
+  document.querySelectorAll('.q-btn').forEach(b=>b.addEventListener('click',()=>setRange(b.dataset.range)));
+
+  // Filter controls
+  document.getElementById('filter-event').addEventListener('change', e=>{ filters.event=e.target.value; applyFilters(); });
+  document.getElementById('filter-status').addEventListener('change',e=>{ filters.status=e.target.value; applyFilters(); });
+  document.getElementById('filter-customer').addEventListener('input',e=>{ filters.customer=e.target.value; page=1; applyFilters(); });
+  document.getElementById('date-from').addEventListener('change',e=>{ filters.from=e.target.value?new Date(e.target.value):null; applyFilters(); });
+  document.getElementById('date-to').addEventListener('change',  e=>{ filters.to=e.target.value?new Date(e.target.value+'T23:59:59'):null; applyFilters(); });
+
+  // Table
+  document.getElementById('tbl-search').addEventListener('input',()=>{ page=1; renderTable(); });
+  document.getElementById('pg-prev').addEventListener('click',()=>{ if(page>1){page--;renderTable();} });
+  document.getElementById('pg-next').addEventListener('click',()=>{ page++;renderTable(); });
+
+  // Table column sort
+  document.querySelectorAll('.data-tbl th[data-col]').forEach(th=>{
+    th.addEventListener('click',()=>{
+      if(sortCol===th.dataset.col) sortDir*=-1; else { sortCol=th.dataset.col; sortDir=-1; }
+      renderTable();
+    });
+  });
+
+  // Export
+  document.getElementById('export-csv').addEventListener('click', exportCSV);
+  document.getElementById('export-csv-top').addEventListener('click', exportCSV);
+  document.getElementById('export-pdf').addEventListener('click', ()=>window.print());
+
+  // Dark mode
+  document.getElementById('dark-toggle').addEventListener('click', toggleDark);
+
+  // Refresh
+  document.getElementById('refresh-btn').addEventListener('click', fetchData);
+
+  // Initial load
+  fetchData();
+
+  // Auto-refresh
+  setInterval(fetchData, REFRESH_MS);
+});
+</script>
+</body>
+</html>
